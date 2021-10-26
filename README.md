@@ -1,5 +1,8 @@
 # fantasy-soccer
 
+players.ipynb is to pull pre-draft player data
+explorer.ipynb is to test other endpoints available
+
 next steps:
  - get player schedules
  - forecast difficulty of a future player's week
