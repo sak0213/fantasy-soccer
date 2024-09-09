@@ -1,41 +1,46 @@
-select t.id, t.name, pythag_wl into ffl_prod.team_profiles from (
-select team, sum(score_for) as score_for, sum(score_against) as score_against, sum(score_for)^1.83 / (sum(score_for)^1.83 + sum(score_against)^1.83) as pythag_wl
-from (
-select
-	id as fid,
-	team_home as team,
-	score_home as score_for,
-	score_away as score_against
-from ffl.fixtures
-union
-select
-	id as fid,
-	team_away as team,
-	score_away as score_for,
-	score_home as score_against
-from ffl.fixtures) a
-group by team) b
-left join ffl.teams as t on t.id = b.team
+create or replace procedure ffl.fixture_player_performance()
+language plpgsql
+as $$ begin
 
-
-
-select 
-	id,
-	date,
-	case when a.team_home = 40 then a.team_away else a.team_home end as team_away,
-	case when a.team_home = 40 then a.score_home else a.score_away end as score_for,
-	case when a.team_home = 40 then a.score_away else a.score_home end as score_against
-from (
-	select * from ffl.fixtures
-	where season = '2023' and 
-	(team_home = 40 or team_away = 40)) a;
-	
-	select * from ffl_prod.team_profiles where id = 42
-
-
--- fixture players flatten
+insert into ffl.fixture_player_performance (
+    fixture_id,
+    team_id,
+    player_id,
+    minutes,
+    rating,
+    captain,
+    substitute,
+    offsides,
+    shots_total,
+    shots_on,
+    goals_total,
+    goals_conceded,
+    assists,
+    saves,
+    passes_total,
+    passes_key,
+    passes_accuracy,
+    tackles_total,
+    blocks,
+    interceptions,
+    dribbles_past,
+    dribbles_success,
+    dribbles_attempted,
+    foul_drawn,
+    foul_committed,
+    cards_yellow,
+    cards_red,
+    penalty_won,
+    penalty_committed,
+    penalty_scored,
+    penalty_missed,
+    penalty_saved,
+    duals_won,
+    duals_total
+)
 select 
 	fixture_id,
+	team_id,
 	cast(players -> 'player' -> 'id' as int) as player_id,
 	coalesce(cast(players -> 'statistics' -> 0 -> 'games' ->> 'minutes' as int), 0) as minutes,
 	coalesce(cast(players -> 'statistics' -> 0 -> 'games' ->> 'rating' as float), 0) as rating,
@@ -71,10 +76,56 @@ select
 from (
 	select 
 		fixture_id,
+		cast(teams -> 'team' ->> 'id' as int) as team_id,
 		jsonb_array_elements(teams::jsonb->'players') players
 	from (
 		select 
-			response_data::jsonb -> 'parameters' ->> 'fixture' as fixture_id, jsonb_array_elements(response_data::jsonb->'response') teams
+			cast(response_data::jsonb -> 'parameters' ->> 'fixture' as int) as fixture_id,
+			jsonb_array_elements(response_data::jsonb->'response') teams
 		from ffl_staging.query_data
 		where status = 'loaded' and query_scope = 'fixtures/players') a 
 		) b
+on conflict on constraint fk_fixture_team_players do nothing;
+
+update ffl_staging.query_data
+set status = 'parsed_player';
+
+
+end; $$;
+
+
+ begin
+
+insert into ffl.fixtures_tactics (
+	fixture_id,
+	team_id,
+	team_formation,
+	player_id,
+	position,
+	start_grid)
+select
+	fixture_id,
+	team_id,
+	formation,
+	cast(players -> 'player' ->> 'id' as int) player_id,
+	players -> 'player' ->> 'pos' as position,
+	players -> 'player' ->> 'grid' as start_grid	
+from (
+	select
+		cast(fixture_id as int) as fixture_id,
+		cast(teams -> 'team' ->> 'id' as int) as team_id,
+		teams ->> 'formation' as formation,
+		jsonb_array_elements(teams -> 'startXI') players
+	from (
+		select
+			response_data::jsonb -> 'parameters' ->> 'fixture' as fixture_id,
+			jsonb_array_elements(response_data::jsonb -> 'response') teams
+		from ffl_staging.query_data
+		where query_scope = 'fixtures/lineups' and status = 'loaded') a ) b
+		
+on conflict on constraint fk_fixture_lineups do nothing;
+
+update ffl_staging.query_data
+set status = 'parsed_fixturelineup';
+
+end; 

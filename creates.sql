@@ -60,9 +60,9 @@ create table if not exists ffl.fixture_player_performance (
     tackles_total varchar(4),
     blocks varchar(4),
     interceptions varchar(4),
-    duels_attempts varchar(4),
-    duels_success varchar(4),
-    duels_past varchar(4),
+    dribbles_past varchar(4),
+    dribbles_success varchar(4),
+    dribbles_attempted  varchar(4),
     foul_drawn varchar(4),
     foul_committed varchar(4),
     cards_yellow varchar(4),
@@ -71,7 +71,10 @@ create table if not exists ffl.fixture_player_performance (
     penalty_committed varchar(4),
     penalty_scored varchar(4),
     penalty_missed varchar(4),
-    penalty_saved varchar(4)
+    penalty_saved varchar(4),
+    duals_won varchar(4),
+    duals_total varchar(4),
+    constraint fk_fixture_team_players primary key (fixture_id, team_id, player_id)
 );
 
 create table if not exists ffl_staging.job_manager (
@@ -86,5 +89,17 @@ create table if not exists ffl_staging.query_data (
     id serial,
     job_id int,
     query_scope varchar(30),
-    response_data text
+    response_data text,
+    status varchar(20)
+);
+
+
+create table ffl.fixtures_tactics (
+    fixture_id int,
+    team_id int,
+    team_formation varchar(11),
+    player_id int,
+    position varchar(2),
+    start_gric varchar(3),
+    constraint fk_fixture_lineups primary key (fixture_id, team_id, player_id)
 );
