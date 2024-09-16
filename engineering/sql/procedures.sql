@@ -1,6 +1,7 @@
-create or replace procedure ffl.fixture_player_performance()
+create or replace procedure ffl_staging.fixture_player_performance()
 language plpgsql
-as $$ begin
+as $$ 
+begin
 
 insert into ffl.fixture_player_performance (
     fixture_id,
@@ -85,16 +86,13 @@ from (
 		from ffl_staging.query_data
 		where status = 'loaded' and query_scope = 'fixtures/players') a 
 		) b
+	where cast(players -> 'player' -> 'id' as int) in (select id from ffl.players)
 on conflict on constraint fk_fixture_team_players do nothing;
-
-update ffl_staging.query_data
-set status = 'parsed_player';
-
-
 end; $$;
 
-
- begin
+create or replace procedure ffl_staging.fixtures_tactics()
+language plpgsql
+as $$ begin
 
 insert into ffl.fixtures_tactics (
 	fixture_id,
@@ -122,10 +120,53 @@ from (
 			jsonb_array_elements(response_data::jsonb -> 'response') teams
 		from ffl_staging.query_data
 		where query_scope = 'fixtures/lineups' and status = 'loaded') a ) b
+		where cast(players -> 'player' ->> 'id' as int) in (select id from ffl.players)
 		
 on conflict on constraint fk_fixture_lineups do nothing;
 
 update ffl_staging.query_data
 set status = 'parsed_fixturelineup';
 
-end; 
+end; $$; 
+
+create or replace procedure ffl_staging.fixtures()
+language plpgsql
+as $$ begin
+
+insert into ffl.fixtures (
+	id,
+	date,
+	season,
+	team_home,
+	team_away,
+	tracking_status,
+	referee,
+	score_home,
+	score_away,
+	season_round
+)
+select 
+	cast(response_data::json -> 'fixture' ->> 'id' as int),
+	cast(response_data::json -> 'fixture' ->> 'date'as date),
+	response_data::json -> 'league' ->> 'season' as season,
+	cast(response_data::json -> 'teams' -> 'home' ->> 'id' as int) as team_home,
+	cast(response_data::json -> 'teams' -> 'away' ->> 'id' as int) as team_away,
+	'posted' as tracking_status,
+	response_data::json -> 'fixture' ->> 'referee' as referee,
+	cast(response_data::json -> 'goals' ->> 'home' as int) as score_home,
+	cast(response_data::json -> 'goals' ->> 'away' as int) as score_away,
+	response_data::json -> 'league' ->> 'round' as season_round
+from ffl_staging.query_data
+where status = 'loaded' and query_scope = 'fixtures'
+
+on conflict on constraint fixtures_pkey do update
+	set	season_round = excluded.season_round;
+	
+update ffl_staging.query_data
+set status = 'parsed'
+where status = 'loaded' and query_scope = 'fixtures';
+
+delete from ffl.fixtures 
+where date > now();
+
+end; $$;

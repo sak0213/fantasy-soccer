@@ -33,7 +33,8 @@ create table if not exists ffl.fixtures (
     tracking_status varchar(15),
     referee varchar(25),
     score_home int,
-    score_away int
+    score_away int,
+    season_round varchar(25)
 );
 
 create table if not exists ffl.fixture_player_performance (

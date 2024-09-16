@@ -11,7 +11,7 @@ import time
 
 class TeamPredictors:
     def __init__(self, id, data=None, setup_parameter=None):
-        self.source_data = data.loc[data['current_team_id'] == id]
+        self.source_data = data.loc[data['team_id'] == id]
         self.team_id = id
         self.setup_params = setup_parameter
         self.home_or_away = self.is_home()
@@ -21,14 +21,14 @@ class TeamPredictors:
         self.home_advantage()
     
     def home_advantage(self):
-        if self.home_advantage == 'home':
+        if self.home_or_away == 'home':
             self.goalie_save_rate = self.goalie_save_rate * (1 + self.setup_params['home_advantage'])
             self.passing_accuracy = self.passing_accuracy * (1 + self.setup_params['home_advantage'])
             self.key_pass_likelihood = self.key_pass_likelihood * (1 + self.setup_params['home_advantage'])
             self.shooting_accuracy = self.shooting_accuracy * (1 + self.setup_params['home_advantage'])
             self.dribble_success = self.dribble_success * (1 + self.setup_params['home_advantage'])
 
-        elif self.home_advantage == 'away':
+        elif self.home_or_away == 'away':
             self.goalie_save_rate = self.goalie_save_rate * (1 - self.setup_params['home_advantage'])
             self.passing_accuracy = self.passing_accuracy * (1 - self.setup_params['home_advantage'])
             self.key_pass_likelihood = self.key_pass_likelihood * (1 - self.setup_params['home_advantage'])
@@ -114,16 +114,23 @@ class GameManager:
 
     def shoot_ball(self):
         shot_roll = random.random()
+        rebound_rate = 0.5
 
         if shot_roll <= self.posessor.shooting_accuracy:
             self.update_log('shot')
             goalie_roll = random.random()
 
-            if goalie_roll >= self.non_pos.goalie_save_rate:
+            if goalie_roll > self.non_pos.goalie_save_rate:
                 self.update_log('goal')
                 self.posession_change()
             else:
-                self.posession_change()
+                rebound_roll = random.random()
+
+                if rebound_roll <= rebound_rate:
+                    pass
+                else:
+                    self.posession_change()
+
 
     def pass_ball(self):
         pass_roll = random.random()
@@ -215,7 +222,7 @@ def simulate(fixture=None, setup_params=None, iterations=None, report_type='aggr
     stats_sql = f"""
         select
             player_id,
-            current_team_id,
+            team_id,
             minutes,
             position,
             coalesce(shots_total * 1.0 / nullif(minutes, 0), 0) as shots_per_minute,
@@ -234,8 +241,8 @@ def simulate(fixture=None, setup_params=None, iterations=None, report_type='aggr
             coalesce(cards_red *1.0 / nullif(minutes, 0), 0) as cards_red_per_minute,
             coalesce(penalty_committed * 1.0 / nullif(minutes, 0), 0) as penalties_committed_per_minute,
             coalesce(saves *1.00 / nullif(goals_conceded + saves, 0), 0) as save_percentage
-        from ffl_prod.player_summaries
-        where player_id in (select player_id from ffl.fixtures_tactics where fixture_id = {fixture})
+        from ffl_prod.player_summaries_2023
+        where (player_id, team_id) in (select player_id, team_id from ffl.fixtures_tactics where fixture_id = {fixture})
     """
 
     fixture_info = f"""
@@ -267,7 +274,7 @@ def simulate(fixture=None, setup_params=None, iterations=None, report_type='aggr
         if report_input == 'aggregate':
             output = scores_df.describe().loc['mean']
             # print(f'Sim complete for {fixture}')
-            return (int(fixture), team_home, team_away, round(output[0],0), round(output[1],0), output[2], output[3], output[4], output[5], output[6], output[7])
+            return (fixture, team_home, team_away, round(output[0],0), round(output[1],0), output[2], output[3], output[4], output[5], output[6], output[7])
 
         elif report_type == 'individual':
 

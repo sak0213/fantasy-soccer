@@ -15,11 +15,11 @@ from ffl.fixture_player_performance
 where fixture_id in (select fixture_id from ffl.fixtures_tactics)
 group by player_id
 
-
+drop table ffl_prod.player_summaries_2023;
 select 
 	player_id,
 	play.position,
-	play.current_team_id,
+	fix.team_id,
 	sum(minutes::int) as minutes,
 	avg(rating::double precision) as rating,
 	sum(offsides::int) as offsides,
@@ -47,11 +47,12 @@ select
 	sum(penalty_scored::int) as penalty_scores,
 	sum(penalty_missed::int) as penalty_missed,
 	sum(penalty_saved::int) as penalty_saved
-	into table ffl_prod.player_summaries 
+	into table ffl_prod.player_summaries_2023
 from ffl.fixture_player_performance as fix
 left join
 		(select id, position, current_team_id from ffl.players) as play on play.id = fix.player_id
-group by fix.player_id, play.position, play.current_team_id;
+group by fix.player_id, play.position, fix.team_id
+having sum(minutes::int) > 0
 
 
 select
