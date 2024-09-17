@@ -6,18 +6,18 @@ local_port = "5432"
 
 
 v1_setup_json = {
-    'team_home':None,
+	'team_home':None,
     'team_away':None,
     'minutes': 90,
     'ticks_per_minute': 15,
     'rolling_params' : {
-        'keep': 0.05,
-        'defence_initiation': 0.06,
-        'pass': 0.83,
+        'keep': 0.125,
+        'defence_initiation': 0.11,
+        'pass': 0.72,
         'shoot':0.015,
-        'dribble': 0.045
+        'dribble': 0.03
     },
-    'home_advantage':0.005, #plus or minus this percent
+    'home_advantage':0.006, #plus or minus this percent
     'mod_mode' : True,
     'shooting_accuracy_mod': -0.125, #changes performance by this amount
     'goalie_accuracy_mod': 0.275 #changes performance by this amount
