@@ -32,49 +32,131 @@ from (
 	
 	select * from ffl_prod.team_profiles where id = 42
 
-
--- fixture players flatten
+----------------------
+-- new player performance table
+drop table ffl_prod.player_summaries;
 select 
-	fixture_id,
-	cast(players -> 'player' -> 'id' as int) as player_id,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'games' ->> 'minutes' as int), 0) as minutes,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'games' ->> 'rating' as float), 0) as rating,
-	cast(players -> 'statistics' -> 0 -> 'games' ->> 'captain' as bool) as captain,
-	cast(players -> 'statistics' -> 0 -> 'games' ->> 'substitute' as bool) as substitute,
-	coalesce(cast(players -> 'statistics' -> 0 ->> 'offsides' as int), 0) as offsides,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'shots' ->> 'total' as int), 0) as shots_total,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'shots' ->> 'on' as int), 0) as shots_on,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'goals' ->> 'total' as int), 0) as goals_total,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'goals' ->> 'conceded' as int), 0) as goals_conceded,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'goals' ->> 'assists' as int), 0) as assists,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'goals' ->> 'saves' as int), 0) as saves,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'passes' ->> 'total' as int), 0) as passes_total,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'passes' ->> 'key' as int), 0) as passes_key,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'passes' ->> 'accuracy' as int), 0) as passes_accuracy,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'tackles' ->> 'total' as int), 0) as tackles_total,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'tackles' ->> 'blocks' as int), 0) as blocks,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'tackles' ->> 'interceptions' as int), 0) as interceptions,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'dribbles' ->> 'past' as int), 0) as dribbles_past,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'dribbles' ->> 'success' as int), 0) as dribbles_success,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'dribbles' ->> 'attempts' as int), 0) as dribbles_attempts,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'fouls' ->> 'drawn' as int), 0) as fouls_drawn,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'fouls' ->> 'committed' as int), 0) as fouls_committed,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'cards' ->> 'yellow' as int), 0) as cards_yellow,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'cards' ->> 'red' as int), 0) as cards_red,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'penalty' ->> 'won' as int), 0) as penalty_won,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'penalty' ->> 'committed' as int), 0) as penalty_committed,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'penalty' ->> 'scored' as int), 0) as penalty_scored,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'penalty' ->> 'missed' as int), 0) as penalty_missed,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'penalty' ->> 'saved' as int), 0) as penalty_saved,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'duals' ->> 'won' as int), 0) as duals_won,
-	coalesce(cast(players -> 'statistics' -> 0 -> 'duals' ->> 'total' as int), 0) as duals_total
-from (
-	select 
-		fixture_id,
-		jsonb_array_elements(teams::jsonb->'players') players
-	from (
-		select 
-			response_data::jsonb -> 'parameters' ->> 'fixture' as fixture_id, jsonb_array_elements(response_data::jsonb->'response') teams
-		from ffl_staging.query_data
-		where status = 'loaded' and query_scope = 'fixtures/players') a 
-		) b
+	fix.season as season,
+	fp.player_id as player_id,
+	sum(minutes::int) as minutes,
+	avg(rating::double precision) as rating,
+	sum(offsides::int) as offsides,
+	sum(shots_total::int) as shots_total,
+	sum(shots_on::int) as shots_on,
+	sum(goals_total::int) as goals_total,
+	sum(goals_conceded::int) as goals_conceded,
+	sum(assists::int) as assists,
+	sum(saves::int) as saves,
+	sum(passes_total::int) as passes_total,
+	sum(passes_key::int) as passes_key,
+	sum(passes_accuracy::int * passes_total::int) as passes_accuracy,
+	sum(tackles_total::int) as tackles_total,
+	sum(blocks::int) as blocks,
+	sum(interceptions::int) as interceptions,
+	sum(dribbles_past::int) as dribbles_past,
+	sum(dribbles_success::int) as dribbles_success,
+	sum(dribbles_attempted::int) as dribbles_attempted,
+	sum(foul_drawn::int) as foul_drawn,
+	sum(foul_committed::int) as foul_committed,
+	sum(cards_yellow::int) as cards_yellow,
+	sum(cards_red::int) as cards_red,
+	sum(penalty_won::int) as penalty_won,
+	sum(penalty_committed::int) as penalty_committed,
+	sum(penalty_scored::int) as penalty_scores,
+	sum(penalty_missed::int) as penalty_missed,
+	sum(penalty_saved::int) as penalty_saved
+into table ffl_prod.player_summaries
+from ffl.fixture_player_performance as fp
+left join (select id, season from ffl.fixtures) as fix on fix.id = fp.fixture_id
+group by fix.season, fp.player_id
+
+
+
+-- new attempt at the rolling stats view
+select 
+	fix.season as season,
+	fp.player_id as player_id,
+	sum(minutes::int) as minutes,
+	avg(rating::double precision) as rating,
+	sum(offsides::int) as offsides,
+	sum(shots_total::int) as shots_total,
+	sum(shots_on::int) as shots_on,
+	sum(goals_total::int) as goals_total,
+	sum(goals_conceded::int) as goals_conceded,
+	sum(assists::int) as assists,
+	sum(saves::int) as saves,
+	sum(passes_total::int) as passes_total,
+	sum(passes_key::int) as passes_key,
+	sum(passes_accuracy::int * passes_total::int) as passes_accuracy,
+	sum(tackles_total::int) as tackles_total,
+	sum(blocks::int) as blocks,
+	sum(interceptions::int) as interceptions,
+	sum(dribbles_past::int) as dribbles_past,
+	sum(dribbles_success::int) as dribbles_success,
+	sum(dribbles_attempted::int) as dribbles_attempted,
+	sum(foul_drawn::int) as foul_drawn,
+	sum(foul_committed::int) as foul_committed,
+	sum(cards_yellow::int) as cards_yellow,
+	sum(cards_red::int) as cards_red,
+	sum(penalty_won::int) as penalty_won,
+	sum(penalty_committed::int) as penalty_committed,
+	sum(penalty_scored::int) as penalty_scores,
+	sum(penalty_missed::int) as penalty_missed,
+	sum(penalty_saved::int) as penalty_saved
+-- into table ffl_prod.player_summaries
+from ffl.fixture_player_performance as fp
+left join (select id, season, season_round from ffl.fixtures) as fix on fix.id = fp.fixture_id
+where (
+	(select ((season::int * 100) + split_part(season_round, ' - ', 2)::int) from ffl.fixtures where id = 1035338) --focus game filter
+	- ((season::int * 100) + split_part(fix.season_round, ' - ', 2)::int)
+		) < 5 --game lookback
+group by fix.season, fp.player_id
+having fp.player_id in (select player_id from ffl.fixtures_tactics where fixture_id = 1035338)  --focus game filter
+
+
+
+
+--analysis
+select * 
+from(
+select 
+	fix.season as season,
+	fp.player_id as player_id,
+	sum(minutes::int) as minutes,
+	avg(rating::double precision) as rating,
+	sum(offsides::int) as offsides,
+	sum(shots_total::int) as shots_total,
+	sum(shots_on::int) as shots_on,
+	sum(goals_total::int) as goals_total,
+	sum(goals_conceded::int) as goals_conceded,
+	sum(assists::int) as assists,
+	sum(saves::int) as saves,
+	sum(passes_total::int) as passes_total,
+	sum(passes_key::int) as passes_key,
+	sum(passes_accuracy::int * passes_total::int) as passes_accuracy,
+	sum(tackles_total::int) as tackles_total,
+	sum(blocks::int) as blocks,
+	sum(interceptions::int) as interceptions,
+	sum(dribbles_past::int) as dribbles_past,
+	sum(dribbles_success::int) as dribbles_success,
+	sum(dribbles_attempted::int) as dribbles_attempted,
+	sum(foul_drawn::int) as foul_drawn,
+	sum(foul_committed::int) as foul_committed,
+	sum(cards_yellow::int) as cards_yellow,
+	sum(cards_red::int) as cards_red,
+	sum(penalty_won::int) as penalty_won,
+	sum(penalty_committed::int) as penalty_committed,
+	sum(penalty_scored::int) as penalty_scores,
+	sum(penalty_missed::int) as penalty_missed,
+	sum(penalty_saved::int) as penalty_saved
+-- into table ffl_prod.player_summaries
+from ffl.fixture_player_performance as fp
+left join (select id, season, season_round from ffl.fixtures) as fix on fix.id = fp.fixture_id
+where (
+	(select ((season::int * 100) + split_part(season_round, ' - ', 2)::int) from ffl.fixtures where id = 1035338) --focus game filter
+	- ((season::int * 100) + split_part(fix.season_round, ' - ', 2)::int)
+		) < 5 --game lookback
+group by fix.season, fp.player_id
+having fp.player_id in (select player_id from ffl.fixtures_tactics where fixture_id = 1035338)) a
+left join (select player_id, team_id, position from ffl.fixtures_tactics where fixture_id = 1035338) as fix_deets on fix_deets.player_id = a.player_id
+

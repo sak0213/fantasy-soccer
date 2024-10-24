@@ -23,7 +23,7 @@ v1_setup_json = {
     'goalie_accuracy_mod': 0.275 #changes performance by this amount
 	}
 
-simulation_iterations = 2000
+simulation_iterations = 1000
 
 season = 2023
 

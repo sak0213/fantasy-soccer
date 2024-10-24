@@ -49,18 +49,18 @@ class TeamPredictors:
             return 'away'
 
     def goalie_stats(self):
-        self.goalie_save_rate = float(self.source_data['save_percentage'].loc[self.source_data['position']== 'Goalkeeper'])
-        self.goalie_pass_success = float(self.source_data['pass_accuracy'].loc[self.source_data['position']== 'Goalkeeper'])
+        self.goalie_save_rate = self.source_data['save_percentage'].loc[self.source_data['position']== 'G'].max()
+        self.goalie_pass_success = self.source_data['pass_accuracy'].loc[self.source_data['position']== 'G'].max()
         
     def passing_stats(self):
-        self.passing_accuracy = float(self.source_data['pass_accuracy'].loc[self.source_data['position'] != 'Goalkeeper'].mean())
-        self.key_pass_likelihood = float(self.source_data['key_pass_percentage'].loc[self.source_data['position'] != 'Goalkeeper'].mean())
+        self.passing_accuracy = float(self.source_data['pass_accuracy'].loc[self.source_data['position'] != 'G'].mean())
+        self.key_pass_likelihood = float(self.source_data['key_pass_percentage'].loc[self.source_data['position'] != 'G'].mean())
 
     def shooting_stats(self):
-        self.shooting_accuracy = float(self.source_data['shots_on_rate'].loc[self.source_data['position'] != 'Goalkeeper'].mean())
+        self.shooting_accuracy = float(self.source_data['shots_on_rate'].loc[self.source_data['position'] != 'G'].mean())
 
     def dribble_stats(self):
-        self.dribble_success = float(self.source_data['dribble_success_rate'].loc[self.source_data['position'] != 'Goalkeeper'].mean())
+        self.dribble_success = float(self.source_data['dribble_success_rate'].loc[self.source_data['position'] != 'G'].mean())
 
     def defensive_stats(self):
         pass
@@ -70,6 +70,14 @@ class TeamPredictors:
         self.passing_stats()
         self.shooting_stats()
         self.dribble_stats()
+    
+    def print_stats(self):
+        print(self.goalie_pass_success)
+        print(self.goalie_save_rate)
+        print(self.passing_accuracy)
+        print(self.dribble_success)
+        print(self.shooting_accuracy)
+        print(self.key_pass_likelihood)
 
 class GameManager:
     def __init__(self, team_home, team_away, setup):
@@ -221,28 +229,31 @@ class GameManager:
 def simulate(fixture=None, setup_params=None, iterations=None, report_type='aggregate'):
     stats_sql = f"""
         select
-            player_id,
-            team_id,
+            fps.player_id,
+			ft.team_id as team_id,
             minutes,
-            position,
-            coalesce(shots_total * 1.0 / nullif(minutes, 0), 0) as shots_per_minute,
-            coalesce(shots_on * 1.0 / nullif(shots_total, 0), 0) as shots_on_rate,
-            coalesce(goals_total * 1.0 / nullif(shots_on, 0), 0) as goals_per_shot_on,
-            coalesce(dribbles_attempted *1.0 / nullif(minutes, 0), 0) as dribbles_per_minute,
-            coalesce(dribbles_success *1.0 / nullif(dribbles_attempted, 0), 0) as dribble_success_rate,
-            coalesce(passes_total * 1.0 / nullif(minutes, 0), 0) as passes_per_minute,
-            coalesce(passes_accuracy *1.0 / nullif(passes_total, 0), 0) as pass_accuracy,
-            coalesce(passes_key * 1.0 / nullif(passes_accuracy, 0), 0) as key_pass_percentage,
-            coalesce(assists *1.0 / nullif(passes_key, 0), 0) as assist_rate_per_key_pass,
-            coalesce((tackles_total + interceptions + blocks)*1.0 / nullif(minutes, 0), 0) as defensive_moves_per_minute,
-            coalesce(foul_committed * 1.0 / nullif(minutes, 0), 0) as fouls_committed_per_minute,
-            coalesce(foul_drawn * 1.0 / nullif(minutes, 0), 0) as fouls_drawn_per_minute,
-            coalesce(cards_yellow *1.0 / nullif(minutes, 0), 0) as cards_yellow_per_minute,
-            coalesce(cards_red *1.0 / nullif(minutes, 0), 0) as cards_red_per_minute,
-            coalesce(penalty_committed * 1.0 / nullif(minutes, 0), 0) as penalties_committed_per_minute,
-            coalesce(saves *1.00 / nullif(goals_conceded + saves, 0), 0) as save_percentage
-        from ffl_prod.player_summaries_2023
-        where (player_id, team_id) in (select player_id, team_id from ffl.fixtures_tactics where fixture_id = {fixture})
+            ft.position,
+            cast(coalesce(shots_total * 1.0 / nullif(minutes, 0), 0) as double precision) as shots_per_minute,
+            cast(coalesce(shots_on * 1.0 / nullif(shots_total, 0), 0) as double precision) as shots_on_rate,
+            cast(coalesce(goals_total * 1.0 / nullif(shots_on, 0), 0) as double precision) as goals_per_shot_on,
+            cast(coalesce(dribbles_attempted *1.0 / nullif(minutes, 0), 0) as double precision) as dribbles_per_minute,
+            cast(coalesce(dribbles_success *1.0 / nullif(dribbles_attempted, 0), 0) as double precision) as dribble_success_rate,
+            cast(coalesce(passes_total * 1.0 / nullif(minutes, 0), 0) as double precision) as passes_per_minute,
+            cast(coalesce(passes_accuracy *1.0 / nullif(passes_total, 0), 0) as double precision) as pass_accuracy,
+            cast(coalesce(passes_key * 1.0 / nullif(passes_accuracy, 0), 0) as double precision) as key_pass_percentage,
+            cast(coalesce(assists *1.0 / nullif(passes_key, 0), 0) as double precision) as assist_rate_per_key_pass,
+            cast(coalesce((tackles_total + interceptions + blocks)*1.0 / nullif(minutes, 0), 0) as double precision) as defensive_moves_per_minute,
+            cast(coalesce(foul_committed * 1.0 / nullif(minutes, 0), 0) as double precision) as fouls_committed_per_minute,
+            cast(coalesce(foul_drawn * 1.0 / nullif(minutes, 0), 0) as double precision) as fouls_drawn_per_minute,
+            cast(coalesce(cards_yellow *1.0 / nullif(minutes, 0), 0) as double precision) as cards_yellow_per_minute,
+            cast(coalesce(cards_red *1.0 / nullif(minutes, 0), 0) as double precision) as cards_red_per_minute,
+            cast(coalesce(penalty_committed * 1.0 / nullif(minutes, 0), 0) as double precision) as penalties_committed_per_minute,
+            cast(coalesce(saves *1.00 / nullif(goals_conceded + saves, 0), 0) as double precision) as save_percentage
+        from ffl_prod.player_summaries as fps
+		inner join (
+				select player_id, team_id, position from ffl.fixtures_tactics where fixture_id = {fixture} and start_grid != '0:0') as ft
+			on ft.player_id = fps.player_id
+		where season = (select season from ffl.fixtures where id = {fixture})
     """
 
     fixture_info = f"""
@@ -260,6 +271,7 @@ def simulate(fixture=None, setup_params=None, iterations=None, report_type='aggr
     df = pd.read_sql(stats_sql, conn)
 
     team_a = TeamPredictors(team_home, df, setup_params)
+    # team_a.print_stats()
     team_b = TeamPredictors(team_away, df, setup_params)    
 
         

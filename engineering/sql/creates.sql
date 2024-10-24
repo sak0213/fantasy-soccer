@@ -104,3 +104,109 @@ create table ffl.fixtures_tactics (
     start_gric varchar(3),
     constraint fk_fixture_lineups primary key (fixture_id, team_id, player_id)
 );
+
+---------------------------------------------------------------
+-- New DB approach
+---------------------------------------------------------------
+
+
+create schema if not exists ffl;
+create schema if not exists ffl_prod;
+create schema if not exists ffl_staging;
+
+create table if not exists ffl.fixture_player_performance (
+    fixture_id int,
+    team_id int,
+    player_id int,
+    minutes int,
+    rating varchar(4),
+    captain boolean,
+    substitute boolean,
+    offsides varchar(4),
+    shots_total int,
+    shots_on int,
+    goals_total int,
+    goals_conceded int,
+    assists int,
+    saves int,
+    passes_total int,
+    passes_key int,
+    passes_accuracy double precision,
+    tackles_total int,
+    blocks int,
+    interceptions int,
+    dribbles_past int,
+    dribbles_success int,
+    dribbles_attempted int,
+    foul_drawn  int,
+    foul_committed int,
+    cards_yellow int,
+    cards_red int,
+    penalty_won int,
+    penalty_committed int,
+    penalty_scored int,
+    penalty_missed int,
+    penalty_saved int,
+    duals_won int,
+    duals_total int,
+    constraint fk_fixture_team_players primary key (fixture_id, team_id, player_id)
+);
+
+create index if not exists fix_play_stats on ffl.fixture_player_performance using btree (
+    fixture_id, team_id, player_id
+);
+
+create table ffl.fixtures_tactics (
+    fixture_id int,
+    team_id int,
+    team_formation varchar(11),
+    player_id int,
+    position varchar(2),
+    start_grid varchar(3),
+    constraint fk_fixture_lineups primary key (fixture_id, team_id, player_id)
+);
+
+create index if not exists fix_play_tactics on ffl.fixtures_tactics using btree (
+    fixture_id, team_id, player_id
+);
+
+create table if not exists ffl.fixtures (
+    id int primary key not null,
+    date date,
+    season varchar(4),
+    team_home int,
+    team_away int,
+    tracking_status varchar(15),
+    referee varchar(25),
+    score_home int,
+    score_away int,
+    season_round varchar(25)),
+    score_home_half int,
+    score_away_half int;
+
+
+create table if not exists ffl.teams (
+    id int primary key not null,
+    name varchar(50) not null,
+    code varchar(4)
+);
+
+
+create table if not exists ffl.players (
+    id int primary key not null,
+    season varchar(4),
+    position varchar(20),
+    name_first varchar(50),
+    name_last varchar(50),
+    name_easy varchar(50),
+    height varchar(6),
+    weight varchar(6)
+    date_of_birth date);
+
+    create table if not exists ffl_staging.query_data (
+    id serial,
+    job_id int,
+    query_scope varchar(30),
+    response_data text,
+    status varchar(20)
+);

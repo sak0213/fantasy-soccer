@@ -47,7 +47,7 @@ select
 	sum(penalty_scored::int) as penalty_scores,
 	sum(penalty_missed::int) as penalty_missed,
 	sum(penalty_saved::int) as penalty_saved
-	into table ffl_prod.player_summaries_2023
+	-- into table ffl_prod.player_summaries_2023
 from ffl.fixture_player_performance as fix
 left join
 		(select id, position, current_team_id from ffl.players) as play on play.id = fix.player_id
@@ -123,3 +123,41 @@ group by fixture_id, team_id) a
 left join ffl.fixtures as fix on fix.id = fixture_id
 group by 1
 having fixture_id = 1035370
+
+
+
+-------------------
+-- base aggregate code
+select 
+	fp.fixture_id,
+	fix.season,
+	sum(minutes) as minutes,
+	sum(shots_total) as shots_total,
+	sum(shots_on) as shots_on,
+	sum(goals_total) as goals_total,
+	sum(goals_conceded) as goals_conceded,
+	sum(assists) as assists,
+	sum(saves) as saves,
+	sum(passes_total) as passes_total,
+	sum(passes_key) as passes_key,
+	sum(passes_accuracy * passes_total) as passes_success,
+	sum(tackles_total) as tackles,
+	sum(blocks) as blocks,
+	sum(interceptions) as interceptions,
+	sum(dribbles_past) as dribbles_past,
+	sum(dribbles_success) as dribbles_success,
+	sum(dribbles_attempted) as dribbles_attempted,
+	sum(foul_drawn) as fouls_drawn,
+	sum(foul_committed) as fouls_committed,
+	sum(cards_yellow) as cards_yellow,
+	sum(cards_red) as cards_red,
+	sum(penalty_won) as penalty_won,
+	sum(penalty_committed) as penalty_committed,
+	sum(penalty_scored) as penalty_scored,
+	sum(penalty_saved) as penalty_saved,
+	sum(duals_won) as duals_won,
+	sum(duals_total) as duals_total
+from ffl.fixture_player_performance as fp
+left join (select id, season from ffl.fixtures) as fix on fix.id = fp.fixture_id
+group by fp.fixture_id, fix.season
+
