@@ -1,0 +1,43 @@
+Sim V1 results:
++ sim frequency modifications
++ homefield advantage
+
+Total Accuracy:   0.36578947368421055
+Win - Accuracy: 0.5 -- Recall: 0.41379310344827586
+Loss - Accuracy: 0.29411764705882354 -- Recall: 0.2845528455284553
+Tie - Accuracy: 0.6265060240963856 -- Recall: 0.3939393939393939
+      labels  Pred Wins  Pred Loss  Pred Ties
+0   True Win       72.0         50       52.0
+1  True Loss       40.0         35       48.0
+2   True_Tie       32.0         19       32.0
+------------------------------------------------------------------------------------------------
+Sim v2 results (10/30/2024):
+
+Total Accuracy:0.4605263157894737
+Win - Accuracy: 0.531578947368421 -- Recall: 0.5771428571428572
+Loss - Accuracy: 0.4152046783625731 -- Recall: 0.5772357723577236
+Tie - Accuracy: 0.15789473684210525 -- Recall: 0.036585365853658534
+	labels	pred_win	pred_loss	pred_tie
+0	true_win	101	        65	        9
+1	true_loss	45	        71	        7
+2	true_tie	44	        35	        3
+
+Sim v2 results (10/30/2024):
++homefield advantage, per home/away analysis
+
+Total Accuracy:0.5052631578947369
+Win - Accuracy: 0.5149253731343284 -- Recall: 0.7885714285714286
+Loss - Accuracy: 0.4897959183673469 -- Recall: 0.3902439024390244
+Tie - Accuracy: 0.42857142857142855 -- Recall: 0.07317073170731707
+      labels	pred_win	pred_loss	pred_tie
+0	true_win	138	            32	      5
+1	true_loss	72	            48	      3
+2	true_tie	58	            18	      6
+------------------------------------------------------------------------------------------------
+Baseline results (Home team always wins):
+
+Total Accuracy:0.4605263157894737
+Win - Accuracy: 0.4605263157894737 -- Recall: 1.0
+Loss Accuracy: 0 -- Recall: 0
+Tie Accuracy: 0 -- Recall: 0
+

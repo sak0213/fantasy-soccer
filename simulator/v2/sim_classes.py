@@ -177,10 +177,20 @@ class GameManager:
         """
         self.home_team = team_home
         self.away_team = team_away
-        self.apply_home_advantage()
+        self.homeadv_shooting = 0
+        self.homeadv_passing = 0
+        self.default_frequencies = {
+            'keep': 0.24,
+            'defence_initiation': 0.025,
+            'pass': 0.695,
+            'shoot':0.015,
+            'dribble': 0.025
+        }
+
         self.apply_mod_mode()
         self.initialize_posession()
         self.event_frequencies = self.generate_team_event_frequencies()
+        self.apply_home_advantage()
         self.game_log = []
         self.game_ticks = setup_json['minutes'] * setup_json['ticks_per_minute']
 
@@ -191,8 +201,20 @@ class GameManager:
         self.non_pos = self.away_team
 
     def apply_home_advantage(self) -> None:
-        #modify select frequencies for home team
-        pass
+        self.homeadv_shooting = 2.1000000000000005 / 90
+        self.homeadv_passing = 30.894736842105214 / 90
+        
+        self.home_baseline += (self.homeadv_shooting + self.homeadv_passing)
+        if self.home_baseline >= 1:
+            self.event_frequencies['home'] = self.default_frequencies
+        else:
+            self.event_frequencies['home'] = {
+                'keep': 1 - self.home_baseline,
+                'defence_initiation': self.away_team.team_config['event_frequency']['defensive_move'],
+                'pass': self.home_team.team_config['event_frequency']['passes'] + self.homeadv_passing,
+                'shoot': self.home_team.team_config['event_frequency']['shots'] + self.homeadv_shooting,
+                'dribble': self.home_team.team_config['event_frequency']['dribbles']
+            }
 
     def apply_mod_mode(self) -> None:
         #modify select attributes for both teams per setup file
@@ -200,32 +222,26 @@ class GameManager:
 
     def generate_team_event_frequencies(self) -> dict:
         frequencies = {}
-        default_frequencies = {
-            'keep': 0.24,
-            'defence_initiation': 0.025,
-            'pass': 0.695,
-            'shoot':0.015,
-            'dribble': 0.025
-        }
-        home_baseline = self.home_team.team_config['event_frequency']['shots'] + self.home_team.team_config['event_frequency']['dribbles'] + self.home_team.team_config['event_frequency']['passes'] +self.away_team.team_config['event_frequency']['defensive_move']
-        away_baseline = self.away_team.team_config['event_frequency']['shots'] + self.away_team.team_config['event_frequency']['dribbles'] + self.away_team.team_config['event_frequency']['passes'] +self.home_team.team_config['event_frequency']['defensive_move']
+
+        self.home_baseline = self.home_team.team_config['event_frequency']['shots'] + self.home_team.team_config['event_frequency']['dribbles'] + self.home_team.team_config['event_frequency']['passes'] +self.away_team.team_config['event_frequency']['defensive_move'] + self.homeadv_shooting + self.homeadv_passing
+        self.away_baseline = self.away_team.team_config['event_frequency']['shots'] + self.away_team.team_config['event_frequency']['dribbles'] + self.away_team.team_config['event_frequency']['passes'] +self.home_team.team_config['event_frequency']['defensive_move']
         
-        if home_baseline >= 1:
-            frequencies['home'] = default_frequencies
+        if self.home_baseline >= 1:
+            frequencies['home'] = self.default_frequencies
         else:
             frequencies['home'] = {
-                'keep': 1 - home_baseline,
+                'keep': 1 - self.home_baseline,
                 'defence_initiation': self.away_team.team_config['event_frequency']['defensive_move'],
                 'pass': self.home_team.team_config['event_frequency']['passes'],
                 'shoot': self.home_team.team_config['event_frequency']['shots'],
                 'dribble': self.home_team.team_config['event_frequency']['dribbles']
             }
         
-        if away_baseline >= 1:
-            frequencies['away'] = default_frequencies
+        if self.away_baseline >= 1:
+            frequencies['away'] = self.default_frequencies
         else:
             frequencies['away'] = {
-                'keep': 1 - away_baseline,
+                'keep': 1 - self.away_baseline,
                 'defence_initiation': self.home_team.team_config['event_frequency']['defensive_move'],
                 'pass': self.away_team.team_config['event_frequency']['passes'],
                 'shoot': self.away_team.team_config['event_frequency']['shots'],
