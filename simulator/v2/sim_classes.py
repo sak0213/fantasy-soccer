@@ -73,7 +73,7 @@ class TeamStatGen:
                     where (
                         (select ((season::int * 100) + split_part(season_round, ' - ', 2)::int) from ffl.fixtures where id = {self.fixture_id}) --focus game filter
                         - ((season::int * 100) + split_part(fix.season_round, ' - ', 2)::int)
-                            ) between 0 and {self.game_lookback} --game lookback
+                            ) between 1 and {self.game_lookback} --game lookback
                     group by fix.season, fp.player_id)	
                 as pd on pd.player_id = lineup.player_id
             where lineup.fixture_id = {self.fixture_id} and lineup.start_grid != '0:0'
